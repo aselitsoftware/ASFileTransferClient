@@ -216,7 +216,6 @@ public class TransferList {
 	public void load() {
 		
 		int i;
-		String sourceProperty;
 		Properties props = new Properties();
 		List<TransferItem> usedItems;
 		int itemIndex;
