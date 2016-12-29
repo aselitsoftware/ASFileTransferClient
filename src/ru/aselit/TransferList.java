@@ -7,13 +7,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import static ru.aselit.TransferItemStateEnum.*;
 
 public class TransferList {
 
@@ -24,6 +30,8 @@ public class TransferList {
 	private boolean updated;
 //	unique index
 	private int index;
+	
+	private static final Logger log = LogManager.getLogger(TransferList.class);
 	
 	/**
 	 * 
@@ -106,6 +114,10 @@ public class TransferList {
 				locker.lock();
 			try {
 				
+				TransferItem item = getByListIndex(index, false);
+				if (null != item)
+					item.interruptThread();
+				
 				items.remove(index);
 				updated = true;
 				
@@ -133,6 +145,9 @@ public class TransferList {
 				
 				if (item.getIndex() != index)
 					continue;
+				
+				item.interruptThread();
+				
 				items.remove(item);
 				updated = true;
 				break;
@@ -167,11 +182,12 @@ public class TransferList {
 	 * @param index
 	 * @return
 	 */
-	public TransferItem getByListIndex(int index) {
+	public TransferItem getByListIndex(int index, boolean needLock) {
 		
 		try {
 			
-			locker.lock();
+			if (needLock)
+				locker.lock();
 			try {
 				
 				return items.get(index);
@@ -182,7 +198,8 @@ public class TransferList {
 				
 		} finally {
 			
-			locker.unlock();
+			if (needLock)
+				locker.unlock();
 		}
 	}
 	
@@ -211,6 +228,26 @@ public class TransferList {
 	}
 	
 	/**
+	 * 
+	 */
+	public void clear() {
+		
+		try {
+		
+			locker.lock();
+			for (int i = items.size() - 1; i >= 0; i--) {
+				
+				if (log.isDebugEnabled())
+					log.debug(String.format("Remove the item %d.", i));
+				removeByListIndex(i, false);
+			}
+		} finally {
+			
+			locker.unlock();
+		}
+	}
+	
+	/**
 	 * Load the list of files.
 	 */
 	public void load() {
@@ -231,6 +268,7 @@ public class TransferList {
 				
 				usedItems = new ArrayList<TransferItem>();
 				
+//				try to get last file index
 				String prop = props.getProperty("index");
 				if (null != prop)
 					index = new Integer(prop).intValue();
@@ -239,11 +277,12 @@ public class TransferList {
 				while (keys.hasMoreElements()) {
 					
 					String key = (String) keys.nextElement();
-					Pattern pattern = Pattern.compile("sourceFile(\\d+)", Pattern.CASE_INSENSITIVE);
+					Pattern pattern = Pattern.compile("sourceFile(\\d+)");
 					Matcher matcher = pattern.matcher(key);
 					if (matcher.find()) {
 						
 						itemIndex = new Integer(matcher.group(1)).intValue();
+//						increase the last index of file if it less
 						if (itemIndex > index)
 							index = itemIndex;
 						TransferItem item = add(itemIndex,
@@ -264,6 +303,17 @@ public class TransferList {
 						continue;
 					removeByListIndex(i, false);
 				}
+				
+//				sort in ascending order of index
+				Collections.sort(items, new Comparator<TransferItem>() {
+
+					@Override
+					public int compare(TransferItem item1, TransferItem item2) {
+						
+						return (new Integer(item1.getIndex()).compareTo(item2.getIndex()));
+					}
+					
+				});
 			}
 		} catch (IOException e) {
 		
@@ -332,20 +382,33 @@ public class TransferList {
 	}
 	
 	/**
-	 * Select first file from list.
+	 * Select a file from list.
 	 * @return
+	 */
 	public TransferItem select() {
 		
-		while (true) {
+		try {
 			
-			if (0 == list.size())
-				return null;
-			TransferItem item = list.get(0);
-			File file = new File(item.getSourceFile());
-			if (file.exists())
-				return item;
-			remove(0);
+			locker.lock();
+			for (TransferItem item : items) {
+				
+				if (tisNew == item.getState()) {
+				
+					updated = true;
+					
+					File file = new File(item.getSourceFile());
+					if (!file.exists())
+						item.setState(tisError);
+					else {
+						item.setState(tisUpload);
+						return item;
+					}
+				}
+			}
+			return null;
+		} finally {
+			
+			locker.unlock();
 		}
 	}
-	*/
 }

@@ -1,26 +1,34 @@
 package ru.aselit;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import ru.aselit.TCPClientThread.TCPClientThreadInterface;
+
 public class TransferThread extends Thread {
 
-//	interface for display thread state, error and result
+//	interface for display thread info
 	public interface TransferThreadInterface {
 
 		public void showTransferList(TransferList list);
 	}
 	
 	private TransferList transferList;
-	private TransferThreadInterface impl;
+	private TransferThreadInterface impl1;
+	private TCPClientThreadInterface impl2;
+	private static final Logger log = LogManager.getLogger(TransferThread.class);
 	
 	/**
 	 * Simple constructor without parameters.
 	 */
-	public TransferThread(TransferThreadInterface impl) {
+	public TransferThread(TransferThreadInterface impl1, TCPClientThreadInterface impl2) {
 		
 		transferList = new TransferList();
 		
-		this.impl = impl;
+		this.impl1 = impl1;
+		this.impl2 = impl2;
 		
-		setDaemon(true);
+//		setDaemon(true);
 		start();
 	}
 	
@@ -46,9 +54,18 @@ public class TransferThread extends Thread {
 				
 //				update list of files
 				transferList.load();
+				
+//				select a file from list for upload
+				TransferItem item = transferList.select();
+				
+				if (null != item) {
+					
+					new TCPClientThread(impl2, item);
+				}
+				
 				if (transferList.isUpdated()) {
 					
-					impl.showTransferList(transferList);
+					impl1.showTransferList(transferList);
 					transferList.resetUpdate();
 				}
 				
@@ -59,5 +76,7 @@ public class TransferThread extends Thread {
 				break;
 			}
 		};
+		
+		transferList.clear();
 	}
 }

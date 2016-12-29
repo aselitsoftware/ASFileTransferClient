@@ -1,10 +1,14 @@
 package ru.aselit;
 
+import static ru.aselit.TransferItemStateEnum.*;
+
 public class TransferItem {
 
 	private int index;
 	private String sourceFile;
 	private String destinationFile;
+	private TransferItemStateEnum state = tisNew;
+	private TCPClientThread thread = null;
 	
 	public TransferItem(int index, String sourceFile, String destinationFile) {
 		
@@ -28,6 +32,28 @@ public class TransferItem {
 		return index;
 	}
 	
+	public TransferItemStateEnum getState() {
+		
+		return state;
+	}
+
+	public void setState(TransferItemStateEnum state) {
+		
+		this.state = state;
+	}
+	
+	public void interruptThread() {
+		
+		if (null == thread)
+			return;
+		thread.interrupt();
+	}
+
+	public void setThread(TCPClientThread thread) {
+		
+		this.thread = thread;
+	}
+
 	@Override
 	public boolean equals(Object obj) {
 		

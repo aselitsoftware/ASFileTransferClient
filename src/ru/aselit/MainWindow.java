@@ -17,9 +17,13 @@ import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 
-import ru.aselit.TransferThread.TransferThreadInterface;
 
-public class MainWindow implements TransferThreadInterface {
+import ru.aselit.TCPClientThread.TCPClientThreadInterface;
+import ru.aselit.TransferThread.TransferThreadInterface;
+import org.eclipse.swt.events.ShellAdapter;
+import org.eclipse.swt.events.ShellEvent;
+
+public class MainWindow implements TransferThreadInterface, TCPClientThreadInterface {
 
 	protected Shell shell;
 	private Table tableTransferList;
@@ -36,7 +40,7 @@ public class MainWindow implements TransferThreadInterface {
 		createContents();
 		
 //		start a file transfer thread
-		transferThread = new TransferThread(this);
+		transferThread = new TransferThread(this, this);
 		
 		shell.open();
 		shell.layout();
@@ -57,6 +61,15 @@ public class MainWindow implements TransferThreadInterface {
 		FormLayout layout = new FormLayout();
 		
 		shell = new Shell();
+		shell.addShellListener(new ShellAdapter() {
+			@Override
+			public void shellClosed(ShellEvent arg0) {
+			
+				if (null != transferThread)
+					transferThread.interrupt();
+			}
+		});
+		
 		shell.setSize(650, 450);
 		shell.setText("File transfer client");
 		shell.setLayout(layout);
@@ -73,9 +86,9 @@ public class MainWindow implements TransferThreadInterface {
 		tblclmnFile.setWidth(300);
 		tblclmnFile.setText("File");
 		
-		TableColumn tblclmnStatus = new TableColumn(tableTransferList, SWT.NONE);
-		tblclmnStatus.setWidth(100);
-		tblclmnStatus.setText("Status");
+		TableColumn tblclmnState = new TableColumn(tableTransferList, SWT.NONE);
+		tblclmnState.setWidth(100);
+		tblclmnState.setText("State");
 		
 		TableColumn tblclmnProgress = new TableColumn(tableTransferList, SWT.RIGHT);
 		tblclmnProgress.setWidth(100);
@@ -137,6 +150,22 @@ public class MainWindow implements TransferThreadInterface {
 		tableTransferList.setLayoutData(fd);
 	}
 
+	/**
+	 * 
+	 * @param index
+	 * @return
+	 */
+	private TableItem getTableItem(int index) {
+		
+		for (int i = 0; i < tableTransferList.getItemCount(); i++) {
+			
+			TableItem item = tableTransferList.getItem(i);
+			if (new Integer(item.getText(0)).equals(index))
+				return item;
+		}
+		return null;
+	}
+	
 	@Override
 	public void showTransferList(TransferList list) {
 		
@@ -150,39 +179,47 @@ public class MainWindow implements TransferThreadInterface {
 				
 				for (i = 0; i < list.size(); i++) {
 					
-					TransferItem item = list.getByListIndex(i);
+					TransferItem item = list.getByListIndex(i, true);
 					
-					int j = -1;
-					while (++j < tableTransferList.getItemCount()) {
+					tableItem = getTableItem(item.getIndex());
+					if (null == tableItem) {
 						
-						tableItem = tableTransferList.getItem(j);
-						Integer index = new Integer(tableItem.getText(0));
-						if (!index.equals(item.getIndex()))
-							continue;
-						break;
-					}
-					
-					if (j < tableTransferList.getItemCount())
-						tableItem = tableTransferList.getItem(j);
-					else
 						tableItem = new TableItem(tableTransferList, SWT.NONE);
+						tableItem.setText(0, String.format("%d", item.getIndex()));
+						tableItem.setText(1, item.getSourceFile());
+						tableItem.setText(3, "0%");
+					}
 					usedItems.add(tableItem);
 					
-					tableItem.setText(0, String.format("%d", item.getIndex()));
-					tableItem.setText(1, item.getSourceFile());
-					tableItem.setText(2, "");
-					tableItem.setText(3, "0 %");
+					tableItem.setText(2, TransferItemStateEnum.asString(item.getState()));
 				}
 				
 //				delete unused items from table
 				for (i = tableTransferList.getItemCount() - 1; i >= 0; i--) {
 					
-					if (-1 != usedItems.indexOf(tableTransferList.getItem(i)))
+					tableItem = tableTransferList.getItem(i);
+					if (-1 != usedItems.indexOf(tableItem))
 						continue;
 					tableTransferList.remove(i);
 				}
 				
 				usedItems = null;
+			}
+		});
+	}
+
+	@Override
+	public void showProgress(int itemIndex, int progress) {
+	
+		Display.getDefault().asyncExec(new Runnable() {
+			
+			public void run() {
+				
+				TableItem tableItem = getTableItem(itemIndex);
+				if (null != tableItem) {
+					
+					tableItem.setText(3, String.format("%d%%", progress));
+				}
 			}
 		});
 	}
