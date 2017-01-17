@@ -20,7 +20,6 @@
     		
         	<zipfileset dir="..\apache-log4j-2.7-bin" includes="log4j-api-2.7.jar" prefix="lib" />
         	<zipfileset dir="..\apache-log4j-2.7-bin" includes="log4j-core-2.7.jar" prefix="lib" />
-			<zipfileset dir="..\lib" includes="json-simple-1.1.1.jar" prefix="lib" />
 			<zipfileset dir="..\ASFileTransferGeneralFiles\distr" includes="ASFileTransferGeneralFiles.jar" prefix="lib" />
     		<zipfileset dir="..\ASGeneralFiles\distr" includes="ASGeneralFiles.jar" prefix="lib" />
     		<zipfileset dir="..\lib" prefix="lib"/>

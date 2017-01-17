@@ -2,19 +2,16 @@ package ru.aselit;
 
 public enum TransferItemStateEnum {
 	
-	tisNew, tisUpload, tisError;
+	tisNew, tisUpload, tisDone, tisError;
 	
-	public static String asString(TransferItemStateEnum state) {
+	public static String toString(TransferItemStateEnum state) {
 		
 		switch (state) {
-		case tisNew:
-			return "New";
-		case tisUpload:
-			return "Upload";
-		case tisError:
-			return "Error";
-		default:
-			return "Uncknown";
+		case tisNew:	return "New";
+		case tisUpload:	return "Upload";
+		case tisDone:	return "Done";
+		case tisError:	return "Error";
+		default:		return "Uncknown";
 		}
 	}
 }

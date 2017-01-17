@@ -17,13 +17,11 @@ import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 
-
-import ru.aselit.TCPClientThread.TCPClientThreadInterface;
 import ru.aselit.TransferThread.TransferThreadInterface;
 import org.eclipse.swt.events.ShellAdapter;
 import org.eclipse.swt.events.ShellEvent;
 
-public class MainWindow implements TransferThreadInterface, TCPClientThreadInterface {
+public class MainWindow implements TransferThreadInterface {
 
 	protected Shell shell;
 	private Table tableTransferList;
@@ -40,7 +38,7 @@ public class MainWindow implements TransferThreadInterface, TCPClientThreadInter
 		createContents();
 		
 //		start a file transfer thread
-		transferThread = new TransferThread(this, this);
+		transferThread = new TransferThread(this);
 		
 		shell.open();
 		shell.layout();
@@ -70,7 +68,7 @@ public class MainWindow implements TransferThreadInterface, TCPClientThreadInter
 			}
 		});
 		
-		shell.setSize(650, 450);
+		shell.setSize(750, 450);
 		shell.setText("File transfer client");
 		shell.setLayout(layout);
 		
@@ -86,13 +84,17 @@ public class MainWindow implements TransferThreadInterface, TCPClientThreadInter
 		tblclmnFile.setWidth(300);
 		tblclmnFile.setText("File");
 		
-		TableColumn tblclmnState = new TableColumn(tableTransferList, SWT.NONE);
-		tblclmnState.setWidth(100);
-		tblclmnState.setText("State");
+		TableColumn tblclmnFileState = new TableColumn(tableTransferList, SWT.NONE);
+		tblclmnFileState.setWidth(100);
+		tblclmnFileState.setText("File state");
 		
-		TableColumn tblclmnProgress = new TableColumn(tableTransferList, SWT.RIGHT);
-		tblclmnProgress.setWidth(100);
+		TableColumn tblclmnProgress = new TableColumn(tableTransferList, SWT.CENTER);
+		tblclmnProgress.setWidth(60);
 		tblclmnProgress.setText("Progress");
+		
+		TableColumn tblclmnTCPState = new TableColumn(tableTransferList, SWT.NONE);
+		tblclmnTCPState.setWidth(100);
+		tblclmnTCPState.setText("TCP state");
 		
 		Button btnClose = new Button(shell, SWT.NONE);
 		btnClose.addSelectionListener(new SelectionAdapter() {
@@ -155,12 +157,12 @@ public class MainWindow implements TransferThreadInterface, TCPClientThreadInter
 	 * @param index
 	 * @return
 	 */
-	private TableItem getTableItem(int index) {
+	private TableItem getTableItem(long id) {
 		
 		for (int i = 0; i < tableTransferList.getItemCount(); i++) {
 			
 			TableItem item = tableTransferList.getItem(i);
-			if (new Integer(item.getText(0)).equals(index))
+			if (new Long(item.getText(0)).equals(id))
 				return item;
 		}
 		return null;
@@ -179,19 +181,20 @@ public class MainWindow implements TransferThreadInterface, TCPClientThreadInter
 				
 				for (i = 0; i < list.size(); i++) {
 					
-					TransferItem item = list.getByListIndex(i, true);
+					TransferItem item = list.get(i);
 					
-					tableItem = getTableItem(item.getIndex());
+					tableItem = getTableItem(item.getId());
 					if (null == tableItem) {
 						
 						tableItem = new TableItem(tableTransferList, SWT.NONE);
-						tableItem.setText(0, String.format("%d", item.getIndex()));
+						tableItem.setText(0, String.format("%d", item.getId()));
 						tableItem.setText(1, item.getSourceFile());
 						tableItem.setText(3, "0%");
 					}
 					usedItems.add(tableItem);
 					
-					tableItem.setText(2, TransferItemStateEnum.asString(item.getState()));
+					tableItem.setText(2, TransferItemStateEnum.toString(item.getState()));
+					tableItem.setText(4, FileTransferCommandEnum.toString(item.getThreadState()));
 				}
 				
 //				delete unused items from table
@@ -204,22 +207,6 @@ public class MainWindow implements TransferThreadInterface, TCPClientThreadInter
 				}
 				
 				usedItems = null;
-			}
-		});
-	}
-
-	@Override
-	public void showProgress(int itemIndex, int progress) {
-	
-		Display.getDefault().asyncExec(new Runnable() {
-			
-			public void run() {
-				
-				TableItem tableItem = getTableItem(itemIndex);
-				if (null != tableItem) {
-					
-					tableItem.setText(3, String.format("%d%%", progress));
-				}
 			}
 		});
 	}

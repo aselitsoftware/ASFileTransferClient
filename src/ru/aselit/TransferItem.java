@@ -1,18 +1,20 @@
 package ru.aselit;
 
 import static ru.aselit.TransferItemStateEnum.*;
+import static ru.aselit.FileTransferCommandEnum.*;
 
-public class TransferItem {
+public class TransferItem extends UpdateState {
 
-	private int index;
+	private long id;
 	private String sourceFile;
 	private String destinationFile;
 	private TransferItemStateEnum state = tisNew;
 	private TCPClientThread thread = null;
 	
-	public TransferItem(int index, String sourceFile, String destinationFile) {
+	public TransferItem(long id, String sourceFile, String destinationFile) {
 		
-		this.index = index;
+		super(true);
+		this.id = id;
 		this.sourceFile = sourceFile;
 		this.destinationFile = destinationFile;
 	}
@@ -27,9 +29,9 @@ public class TransferItem {
 		return destinationFile;
 	}
 		
-	public int getIndex() {
+	public long getId() {
 		
-		return index;
+		return id;
 	}
 	
 	public TransferItemStateEnum getState() {
@@ -52,6 +54,15 @@ public class TransferItem {
 	public void setThread(TCPClientThread thread) {
 		
 		this.thread = thread;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public FileTransferCommandEnum getThreadState() {
+		
+		return ((null == thread) ? ftcNone : thread.getMyState());
 	}
 
 	@Override

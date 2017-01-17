@@ -3,8 +3,6 @@ package ru.aselit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import ru.aselit.TCPClientThread.TCPClientThreadInterface;
-
 public class TransferThread extends Thread {
 
 //	interface for display thread info
@@ -14,19 +12,17 @@ public class TransferThread extends Thread {
 	}
 	
 	private TransferList transferList;
-	private TransferThreadInterface impl1;
-	private TCPClientThreadInterface impl2;
+	private TransferThreadInterface transferThreadInterfaceImpl;
 	private static final Logger log = LogManager.getLogger(TransferThread.class);
 	
 	/**
 	 * Simple constructor without parameters.
 	 */
-	public TransferThread(TransferThreadInterface impl1, TCPClientThreadInterface impl2) {
+	public TransferThread(TransferThreadInterface transferThreadInterfaceImpl) {
 		
 		transferList = new TransferList();
 		
-		this.impl1 = impl1;
-		this.impl2 = impl2;
+		this.transferThreadInterfaceImpl = transferThreadInterfaceImpl;
 		
 //		setDaemon(true);
 		start();
@@ -39,7 +35,7 @@ public class TransferThread extends Thread {
 	 */
 	public void addFile(String sourceFile, String destinationFile) {
 		
-		if (null == transferList.add(sourceFile, destinationFile, true))
+		if (null == transferList.add(sourceFile, destinationFile))
 			return;
 		transferList.save();
 	}
@@ -58,14 +54,15 @@ public class TransferThread extends Thread {
 //				select a file from list for upload
 				TransferItem item = transferList.select();
 				
-				if (null != item) {
-					
-					new TCPClientThread(impl2, item);
-				}
+				if (null != item)
+					new TCPClientThread(item);
+				
+				if (transferList.removeIsDone())
+					transferList.save();
 				
 				if (transferList.isUpdated()) {
 					
-					impl1.showTransferList(transferList);
+					transferThreadInterfaceImpl.showTransferList(transferList);
 					transferList.resetUpdate();
 				}
 				
@@ -75,7 +72,7 @@ public class TransferThread extends Thread {
 				
 				break;
 			}
-		};
+		}
 		
 		transferList.clear();
 	}
